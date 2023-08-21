@@ -32,6 +32,20 @@ func Response(ctx *gin.Context, httpStatus int, v interface{}) {
 	ctx.JSON(httpStatus, v)
 }
 
+func ErrorResponse(ctx *gin.Context, statusCode int, errorMsg string) {
+	Response(ctx, statusCode, gin.H{
+		"status_code": statusCode,
+		"status_msg":  errorMsg,
+	})
+}
+
+func SuccessResponse(ctx *gin.Context) {
+	Response(ctx, http.StatusOK, gin.H{
+		"status_code": 0,
+		"status_msg":  "success",
+	})
+}
+
 type FavActionParams struct {
 	Token      string `form:"token" binding:"required"`
 	VideoId    int64  `form:"video_id" binding:"required"`
@@ -49,14 +63,14 @@ func FavoriteAction(ctx *gin.Context) {
 	var favInfo FavActionParams
 	err := ctx.ShouldBind(&favInfo)
 	if err != nil {
-		Response(ctx, 400, gin.H{"error": err.Error()})
+		ErrorResponse(ctx, http.StatusBadRequest, err.Error())
 		return
 	}
 	tokenUids, _ := ctx.Get("user_id")
 	tokenUid, _ := tokenUids.(int64)
 
 	if err != nil {
-		Response(ctx, 500, gin.H{"error": err.Error()})
+		ErrorResponse(ctx, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -67,10 +81,10 @@ func FavoriteAction(ctx *gin.Context) {
 	err = FavoriteActionDo(tokenUid, favInfo.VideoId, favInfo.ActionType, redisPool)
 
 	if err != nil {
-		Response(ctx, 500, gin.H{"error": err.Error()})
+		ErrorResponse(ctx, http.StatusBadRequest, err.Error())
 		return
 	}
-	Response(ctx, 200, gin.H{"message": "success"})
+	SuccessResponse(ctx)
 	// 获取 Redis 连接池
 
 }
@@ -252,8 +266,10 @@ func FavoriteList(ctx *gin.Context) {
 	fmt.Println("videoId==", videoId)
 	resp, err := GetVideoById(videoId)
 	if err != nil {
-		fmt.Println("出错了，....")
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "获取视频失败"})
+		fmt.Println("出错了，获取视频失败")
+		//ctx.JSON(http.StatusInternalServerError, gin.H{"error": "获取视频失败"})
+		ErrorResponse(ctx, http.StatusBadRequest, err.Error())
+		return
 	}
 
 	response := FavListResponse{
