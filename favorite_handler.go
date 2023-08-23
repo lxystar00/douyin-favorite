@@ -195,15 +195,21 @@ func FavoriteTableChange(db *gorm.DB, tableName string, userID int64, videoID in
 			err = db.Table(tableName).Create(&newFav).Error
 			if err != nil {
 				fmt.Println("插入记录失败:", err)
-				return
+				panic(err) //return
 			}
 			//fmt.Println("插入成功")
 		} else {
+			// 已点赞禁止再点赞
+			if fav.IsDeleted == -1 {
+				fmt.Println("操作错误!")
+				panic(err) //return
+			}
 			// 更新记录的 is_deleted 和 updated_at 字段
 			err = db.Model(&fav).Updates(models.Favorite{IsDeleted: -1, UpdatedAt: now}).Error
 			if err != nil {
 				fmt.Println("更新记录失败:", err)
-				return
+				panic(err)
+				//return
 			}
 			//fmt.Println("点赞更改记录成功")
 		}
@@ -211,14 +217,21 @@ func FavoriteTableChange(db *gorm.DB, tableName string, userID int64, videoID in
 		if gorm.IsRecordNotFoundError(err) {
 			if err != nil {
 				fmt.Println("操作错误:", err)
-				return
+				panic(err) //return
 			}
 		} else {
+			// 已取消点赞禁止再次取消点赞
+			if fav.IsDeleted == 1 {
+				fmt.Println("操作错误！")
+				panic(err)
+				//return
+			}
 			// 更新记录的 is_deleted 和 updated_at 字段
 			err = db.Model(&fav).Updates(models.Favorite{IsDeleted: 1, UpdatedAt: now}).Error
 			if err != nil {
 				fmt.Println("更新记录失败:", err)
-				return
+				panic(err)
+				//return
 			}
 			//fmt.Println("取消点赞更改记录成功")
 		}
@@ -240,6 +253,7 @@ func ChangeUserFavoriteCount(db *gorm.DB, tableName string, userID int64, userOR
 	err := db.Table(tableName).Where("id=?", userID).Update(userORauther, gorm.Expr(userORauther+" + ?", changeValue)).Error
 	if err != nil {
 		fmt.Println("更新 favorite_count 失败:", err)
+		panic(err)
 	}
 
 	//defer db.Close()
@@ -259,6 +273,7 @@ func ChangeVideoLikesCount(db *gorm.DB, tableName string, videoID int64, action 
 	err := db.Table(tableName).Where("id=?", videoID).Update("likes", gorm.Expr("likes+?", changeValue)).Error
 	if err != nil {
 		fmt.Println("更新 likes_count 失败:", err)
+		panic(err)
 	}
 
 	//defer db.Close()
